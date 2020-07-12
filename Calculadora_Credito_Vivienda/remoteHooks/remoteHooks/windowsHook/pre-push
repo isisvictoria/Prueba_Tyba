@@ -1,0 +1,53 @@
+#!/bin/bash
+export PATH=$PATH
+
+EJECUCION_EXITOSA=0
+EJECUCION_FALLIDA=1
+
+function redirectBaseDirectory {
+	# go to main project dir
+	pwd
+}
+
+printRed() {
+	echo -e "\e[31m$1"
+}
+
+printGreen() {
+	echo -e "\e[32m$1"
+}
+
+printYellow() {
+	echo -e "\e[33m$1"
+}
+
+function checkSonar {
+	printGreen "Iniciando análisis con Sonar"
+	gradle sonarqube -x test --stacktrace
+
+	curl http://sonar.bancolombia.corp/sonarbc/api/qualitygates/project_status?projectKey=AW0360001_TESTBBDSVE -o .sonar/report.json
+
+	if [ "$RESULT_SONAR" -gt 0 ];
+	then
+		printRed "[$(date +"%Y-%m-%d at %H.%M.%S")] - Se encontraron errores en la ejecución de análisis estático con Sonar."
+		printRed "Diríjase a la consola de Sonar, ubíquese en su proyecto y corríjalos."
+		printYellow "PUSH ABORTADO POR SONAR!"
+		printRed " ... "
+		eraseTempFiles
+		exit $EJECUCION_FALLIDA
+	else
+		printGreen "Sonar finlizó correctamente"
+	fi
+}
+
+function eraseTempFiles {
+	rm sonar/report.json
+}
+
+printGreen "[$(date +"%Y-%m-%d at %H.%M.%S")]-Iniciando Pre-Push"
+redirectBaseDirectory
+checkSonar
+eraseTempFiles
+
+#exit $EJECUCION_EXITOSA
+exit 1
